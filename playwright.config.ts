@@ -88,6 +88,7 @@ const config: PlaywrightTestConfig = defineConfig({
   reporter: [
     ['html', { open: 'never', outputFolder: 'results_reports/playwright-report' }],
     ['allure-playwright', { resultsDir: 'results_reports/allure-results' }],
+    ['junit', { outputFile: 'results_reports/results.xml' }]
   ],
 
 
