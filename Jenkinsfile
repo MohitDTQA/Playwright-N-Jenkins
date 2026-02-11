@@ -144,7 +144,8 @@ pipeline {
         reportFiles: 'index.html',
         reportName: 'Playwright Report',
         keepAll: true,
-        allowMissing: true
+        allowMissing: true,
+        alwaysLinkToLastBuild: true
       ])
 
       publishHTML([
@@ -152,7 +153,8 @@ pipeline {
         reportFiles: 'index.html',
         reportName: 'Allure Report',
         keepAll: true,
-        allowMissing: true
+        allowMissing: true,
+        alwaysLinkToLastBuild: true
       ])
     }
   }
