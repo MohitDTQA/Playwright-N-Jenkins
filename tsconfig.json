@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+
+    "ignoreDeprecations": "6.0",
+
+    "baseUrl": ".",
+    "paths": {
+      "@BasePage": ["BasePage.ts"],
+      "@Index": ["index.ts"],
+
+      "@*": ["Pages/*", "Tests/*"],
+      "@TestData/*": ["test-data/*"],
+      "@Helper/*": ["src/helpers/*"],
+      "@Types/*": ["src/types/*"],
+      "@Utils/*": ["src/utils/*"],
+      "@Fixtures/*": ["src/fixtures/*"],
+      "@api_Helpers/*": ["src/API_Helpers/*"],
+    },
+
+    "types": ["node", "@playwright/test"]
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "results_reports/playwright-report", "results_reports/test-results"]
+}

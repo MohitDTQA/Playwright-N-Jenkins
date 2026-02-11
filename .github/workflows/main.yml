@@ -1,0 +1,522 @@
+# # name: Playwright CI/CD
+
+# on:
+#   push:
+#     branches: [ main, master ]
+#   pull_request:
+#     branches: [ main, master ]
+
+# permissions:
+#   contents: read
+#   pages: write
+#   id-token: write
+
+# jobs:
+#   test-and-deploy:
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 60
+
+#     environment:
+#       name: github-pages
+#       url: ${{ steps.deployment.outputs.page_url }}
+
+#     steps:
+#       # 1️⃣ Checkout repository
+#       - name: Checkout repo
+#         uses: actions/checkout@v4
+
+#       # 2️⃣ Setup Node.js
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: lts/*
+
+#       # 3️⃣ Install dependencies
+#       - name: Install dependencies
+#         run: npm ci
+
+#       # 4️⃣ Install Playwright browsers
+#       - name: Install Playwright browsers
+#         run: npx playwright install --with-deps
+
+#       # 5️⃣ Install Allure CLI
+#       - name: Install Allure CLI
+#         run: npm install -D allure-commandline
+
+#       # 6️⃣ Run Playwright tests
+#       - name: Run Playwright tests
+#         run: xvfb-run -a npx playwright test
+#         continue-on-error: true
+
+#       # 7️⃣ Generate Allure HTML report
+#       - name: Generate Allure report
+#         if: always()
+#         run: npx allure-commandline generate results_reports/allure-results --clean -o results_reports/allure-report
+
+#       # 8️⃣ Upload Playwright test-results artifacts
+#       - name: Upload Playwright test-results
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: playwright-test-results
+#           path: results_reports/test-results/
+#           retention-days: 30
+
+#       # 8️⃣b Upload custom artifacts (screenshots/videos)
+#       - name: Upload custom artifacts
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: custom-artifacts
+#           path: artifacts/
+#           retention-days: 30
+
+#       # 9️⃣ Upload Playwright HTML report
+#       - name: Upload Playwright report artifact
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: playwright-report
+#           path: results_reports/playwright-report/
+#           retention-days: 30
+
+#       # 🔟 Upload Allure report
+#       - name: Upload Allure report artifact
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: allure-report
+#           path: results_reports/allure-report/
+#           retention-days: 30
+
+#       # 1️⃣1️⃣ Prepare GitHub Pages content (Reports + Artifacts)
+#       - name: Prepare Pages content
+#         if: always()
+#         run: |
+#           mkdir -p pages/playwright
+#           mkdir -p pages/allure
+#           mkdir -p pages/artifacts
+
+#           # Copy reports
+#           cp -r results_reports/playwright-report/* pages/playwright/
+#           cp -r results_reports/allure-report/* pages/allure/
+
+#           # Copy artifacts from root/artifacts/ directory
+#           if [ -d "artifacts" ]; then
+#             cp -r artifacts/* pages/artifacts/
+#           fi
+
+#           # Copy test-results if exists
+#           if [ -d "results_reports/test-results" ]; then
+#             cp -r results_reports/test-results/* pages/artifacts/
+#           fi
+
+#           # Create artifact index page with screenshot/video gallery
+#           cat <<'EOF' > pages/artifacts/index.html
+#           <!DOCTYPE html>
+#           <html>
+#             <head>
+#               <meta charset="UTF-8" />
+#               <title>Test Artifacts</title>
+#               <style>
+#                 body {
+#                   font-family: Arial, sans-serif;
+#                   padding: 40px;
+#                   background: #f5f5f5;
+#                 }
+#                 h1 {
+#                   margin-bottom: 30px;
+#                   color: #333;
+#                 }
+#                 .artifacts-grid {
+#                   display: grid;
+#                   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+#                   gap: 20px;
+#                   margin-top: 20px;
+#                 }
+#                 .artifact-card {
+#                   background: white;
+#                   border-radius: 8px;
+#                   padding: 15px;
+#                   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+#                 }
+#                 .artifact-card h3 {
+#                   margin: 0 0 10px 0;
+#                   font-size: 14px;
+#                   color: #666;
+#                   word-break: break-all;
+#                 }
+#                 .artifact-card img {
+#                   width: 100%;
+#                   height: auto;
+#                   border-radius: 4px;
+#                   cursor: pointer;
+#                   transition: transform 0.2s;
+#                 }
+#                 .artifact-card img:hover {
+#                   transform: scale(1.02);
+#                 }
+#                 .artifact-card video {
+#                   width: 100%;
+#                   height: auto;
+#                   border-radius: 4px;
+#                 }
+#                 .modal {
+#                   display: none;
+#                   position: fixed;
+#                   z-index: 1000;
+#                   left: 0;
+#                   top: 0;
+#                   width: 100%;
+#                   height: 100%;
+#                   background-color: rgba(0,0,0,0.9);
+#                 }
+#                 .modal-content {
+#                   margin: auto;
+#                   display: block;
+#                   max-width: 90%;
+#                   max-height: 90%;
+#                   position: absolute;
+#                   top: 50%;
+#                   left: 50%;
+#                   transform: translate(-50%, -50%);
+#                 }
+#                 .close {
+#                   position: absolute;
+#                   top: 15px;
+#                   right: 35px;
+#                   color: #f1f1f1;
+#                   font-size: 40px;
+#                   font-weight: bold;
+#                   cursor: pointer;
+#                 }
+#                 .no-artifacts {
+#                   text-align: center;
+#                   color: #999;
+#                   padding: 40px;
+#                 }
+#               </style>
+#             </head>
+#             <body>
+#               <h1>Test Artifacts</h1>
+#               <div id="artifacts-container" class="artifacts-grid"></div>
+#               <div class="no-artifacts" id="no-artifacts" style="display:none;">
+#                 No artifacts found
+#               </div>
+
+#               <div id="imageModal" class="modal">
+#                 <span class="close">&times;</span>
+#                 <img class="modal-content" id="modalImage">
+#               </div>
+
+#               <script>
+#                 async function loadArtifacts() {
+#                   const container = document.getElementById('artifacts-container');
+#                   const noArtifacts = document.getElementById('no-artifacts');
+                  
+#                   try {
+#                     const response = await fetch('artifacts-list.json');
+#                     const data = await response.json();
+                    
+#                     if (data.screenshots.length === 0 && data.videos.length === 0) {
+#                       noArtifacts.style.display = 'block';
+#                       return;
+#                     }
+
+#                     // Display screenshots
+#                     data.screenshots.forEach(screenshot => {
+#                       const card = document.createElement('div');
+#                       card.className = 'artifact-card';
+#                       card.innerHTML = `
+#                         <h3>📸 ${screenshot.name}</h3>
+#                         <img src="${screenshot.path}" alt="${screenshot.name}" onclick="openModal(this.src)">
+#                       `;
+#                       container.appendChild(card);
+#                     });
+
+#                     // Display videos
+#                     data.videos.forEach(video => {
+#                       const card = document.createElement('div');
+#                       card.className = 'artifact-card';
+#                       card.innerHTML = `
+#                         <h3>🎥 ${video.name}</h3>
+#                         <video controls>
+#                           <source src="${video.path}" type="video/webm">
+#                           Your browser does not support the video tag.
+#                         </video>
+#                       `;
+#                       container.appendChild(card);
+#                     });
+#                   } catch (error) {
+#                     noArtifacts.style.display = 'block';
+#                   }
+#                 }
+
+#                 function openModal(src) {
+#                   const modal = document.getElementById('imageModal');
+#                   const modalImg = document.getElementById('modalImage');
+#                   modal.style.display = 'block';
+#                   modalImg.src = src;
+#                 }
+
+#                 document.querySelector('.close').onclick = function() {
+#                   document.getElementById('imageModal').style.display = 'none';
+#                 }
+
+#                 window.onclick = function(event) {
+#                   const modal = document.getElementById('imageModal');
+#                   if (event.target == modal) {
+#                     modal.style.display = 'none';
+#                   }
+#                 }
+
+#                 loadArtifacts();
+#               </script>
+#             </body>
+#           </html>
+#           EOF
+
+#           # Generate artifacts list JSON
+#           cat <<'EOF' > pages/artifacts/generate-list.sh
+#           #!/bin/bash
+#           cd "$(dirname "$0")"
+          
+#           echo '{'
+#           echo '  "screenshots": ['
+#           first=true
+#           find . -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" \) | while read -r file; do
+#             filename=$(basename "$file")
+#             filepath="${file#./}"
+#             if [ "$first" = true ]; then
+#               first=false
+#             else
+#               echo ','
+#             fi
+#             echo -n "    {\"name\": \"$filename\", \"path\": \"$filepath\"}"
+#           done
+#           echo ''
+#           echo '  ],'
+#           echo '  "videos": ['
+#           first=true
+#           find . -type f \( -name "*.webm" -o -name "*.mp4" \) | while read -r file; do
+#             filename=$(basename "$file")
+#             filepath="${file#./}"
+#             if [ "$first" = true ]; then
+#               first=false
+#             else
+#               echo ','
+#             fi
+#             echo -n "    {\"name\": \"$filename\", \"path\": \"$filepath\"}"
+#           done
+#           echo ''
+#           echo '  ]'
+#           echo '}'
+#           EOF
+
+#           chmod +x pages/artifacts/generate-list.sh
+#           cd pages/artifacts && ./generate-list.sh > artifacts-list.json && cd ../..
+
+#           # Create landing page
+#           cat <<EOF > pages/index.html
+#           <!DOCTYPE html>
+#           <html>
+#             <head>
+#               <meta charset="UTF-8" />
+#               <title>Test Reports</title>
+#               <style>
+#                 body {
+#                   font-family: Arial, sans-serif;
+#                   padding: 40px;
+#                 }
+#                 h1 {
+#                   margin-bottom: 10px;
+#                 }
+#                 ul {
+#                   margin-top: 20px;
+#                 }
+#                 li {
+#                   margin: 12px 0;
+#                 }
+#                 a {
+#                   font-size: 18px;
+#                   text-decoration: none;
+#                   color: #0366d6;
+#                 }
+#                 a:hover {
+#                   text-decoration: underline;
+#                 }
+#                 small {
+#                   color: #555;
+#                 }
+#               </style>
+#             </head>
+#             <body>
+#               <h1>Test Reports</h1>
+#               <p>Select a report:</p>
+#               <ul>
+#                 <li>
+#                   <a href="./allure/">Allure Report</a>
+#                   <small>– trends, history, API data</small>
+#                 </li>
+#                 <li>
+#                   <a href="./playwright/">Playwright HTML Report</a>
+#                   <small>– debugging, traces</small>
+#                 </li>
+#                 <li>
+#                   <a href="./artifacts/">Runtime Artifacts</a>
+#                   <small>– screenshots, videos, traces</small>
+#                 </li>
+#               </ul>
+#             </body>
+#           </html>
+#           EOF
+
+#       # 1️⃣2️⃣ Upload Pages artifact (ONLY ONCE)
+#       - name: Upload Pages artifact
+#         if: always()
+#         uses: actions/upload-pages-artifact@v3
+#         with:
+#           path: pages/
+
+#       # 1️⃣3️⃣ Deploy to GitHub Pages
+#       - name: Deploy to GitHub Pages
+#         if: always()
+#         id: deployment
+#         uses: actions/deploy-pages@v4
+
+# name: Playwright CI/CD
+
+# name: Playwright CI/CD
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      # 1️⃣ Checkout repository
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # 2️⃣ Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      # 3️⃣ Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # 4️⃣ Install Playwright browsers
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      # 5️⃣ Install Allure CLI
+      - name: Install Allure CLI
+        run: npm install -D allure-commandline
+
+      # 6️⃣ Run Playwright tests
+      - name: Run Playwright tests
+        run: xvfb-run -a npx playwright test
+        continue-on-error: true
+
+      # 7️⃣ Generate Allure HTML report
+      - name: Generate Allure report
+        if: always()
+        run: npx allure-commandline generate results_reports/allure-results --clean -o results_reports/allure-report
+
+      # 8️⃣ Upload Playwright test-results artifacts
+      - name: Upload Playwright test-results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: results_reports/test-results/
+          retention-days: 30
+
+      # 8️⃣b Upload custom artifacts (screenshots/videos)
+      - name: Upload custom artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: custom-artifacts
+          path: artifacts/
+          retention-days: 30
+
+      # 9️⃣ Upload Playwright HTML report
+      - name: Upload Playwright report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: results_reports/playwright-report/
+          retention-days: 30
+
+      # 🔟 Upload Allure report
+      - name: Upload Allure report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: results_reports/allure-report/
+          retention-days: 30
+
+      # 1️⃣1️⃣ Prepare GitHub Pages content (Reports + Artifacts)
+      - name: Prepare Pages content
+        if: always()
+        run: |
+          mkdir -p pages/playwright
+          mkdir -p pages/allure
+          mkdir -p pages/artifacts
+
+          # Copy reports
+          cp -r results_reports/playwright-report/* pages/playwright/
+          cp -r results_reports/allure-report/* pages/allure/
+
+          # Copy artifacts from root/artifacts/ directory
+          if [ -d "artifacts" ]; then
+            cp -r artifacts/* pages/artifacts/
+          fi
+
+          # Copy test-results if exists
+          if [ -d "results_reports/test-results" ]; then
+            cp -r results_reports/test-results/* pages/artifacts/
+          fi
+
+          # Copy HTML templates and scripts from .github/workflows/html-templates
+          cp .github/workflows/html-templates/artifacts-index.html pages/artifacts/index.html
+          cp .github/workflows/html-templates/generate-artifacts-list.sh pages/artifacts/generate-list.sh
+          cp .github/workflows/html-templates/landing-page.html pages/index.html
+
+          # Generate artifacts list JSON
+          chmod +x pages/artifacts/generate-list.sh
+          cd pages/artifacts && ./generate-list.sh > artifacts-list.json && cd ../..
+
+      # 1️⃣2️⃣ Upload Pages artifact (ONLY ONCE)
+      - name: Upload Pages artifact
+        if: always()
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages/
+
+      # 1️⃣3️⃣ Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        if: always()
+        id: deployment
+        uses: actions/deploy-pages@v4
