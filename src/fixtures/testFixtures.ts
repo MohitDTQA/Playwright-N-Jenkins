@@ -5,7 +5,35 @@ import * as _ from '@Index';
 export const test = base.extend<{
   testDirectories: _.TestDirectories;
   page: _.EnhancedPage;
+  _resultLogger: void;
 }>({
+  
+  // Auto fixture: runs for every test (UI + API) and logs final status.
+  _resultLogger: [async ({ }, use, testInfo) => {
+    const GREEN = '\x1b[32m';
+    const RED = '\x1b[31m';
+    const RESET = '\x1b[0m';
+    const WHITE = '\x1b[97m';
+
+    console.log(`${WHITE}___________________________________________________________\n`);
+
+    await use();
+
+    const title = testInfo.title;
+    const status = testInfo.status;
+
+    if (status === 'passed') {
+      console.log(`\n${GREEN}✔ PASS: ${title}${RESET}\n`);
+    } else if (status === 'failed') {
+      console.log(`\n${RED}✖ FAIL: ${title}${RESET}\n`);
+    } else {
+      console.log(`\nWARN ${status?.toUpperCase()}: ${title}\n`);
+    }
+
+    console.log(process.env.RECORD_VIDEO === 'on' ? '\nVideo saved\n' : '\nVideo was not recorded\n');
+    console.log(`${WHITE}___________________________________________________________`);
+  }, { auto: true }],
+
   // Fixture: Create and manage test directories
   testDirectories: async ({ browserName }, use, testInfo) => {
     const testName = testInfo.title;

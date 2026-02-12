@@ -1,7 +1,6 @@
 // import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
-import test from '@playwright/test';
 
 // const configenv = dotenv.config({ path: 'config.env', quiet: true, });
 // const credsenv = dotenv.config({ path: 'creds.env', quiet: true, });
@@ -23,34 +22,6 @@ export { highlight, createhighLightLocator, createhighLightPage } from '@Helper/
 export { BasePage } from '@BasePage';
 export { useData } from '@TestData/TestData';
 
-
-//API
+// API
 export { Api, CheckStatus } from '@api_Helpers/api';
 export { generateRandomUser } from '@api_Helpers/RandomUser';
-
-//_________________________________
-const GREEN = '\x1b[32m';
-const RED = '\x1b[31m';
-const RESET = '\x1b[0m';
-const WHITE = '\x1b[97m';
-
-console.log(`${WHITE}___________________________________________________________`);
-
-test.afterEach(async ({ }, testInfo) => {
-
-    const title = testInfo.title;
-    const status = testInfo.status;
-
-    if (status === 'passed') {
-        console.log(`${GREEN}✔ PASSED: ${title}${RESET}`);
-    } else if (status === 'failed') {
-        console.log(`${RED}✖ FAILED: ${title}${RESET}`);
-    } else {
-        console.log(`⚠ ${status?.toUpperCase()}: ${title}`);
-    }
-
-    console.log(process.env.RECORD_VIDEO === 'on' ? `\n📹 Videos saved\n` : `\nVideo was not Recorded\n`);
-
-    console.log(`${WHITE}___________________________________________________________`);
-
-});
